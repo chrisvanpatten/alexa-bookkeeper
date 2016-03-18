@@ -9,7 +9,7 @@ class AlexaBookkeeper {
 	 *
 	 * @var public
 	 */
-	public $relativePathToMintCreds = '../../.mint.json';
+	public $relativePathToMintCreds = 'mint.json';
 
 	/**
 	 * Handle requests here
@@ -88,59 +88,6 @@ class AlexaBookkeeper {
 		}
 
 		return $content;
-	}
-
-	/**
-	 * Map a keyword from the Alexa request to our
-	 * account IDs.
-	 *
-	 * TODO: Make this work seamlessly without needing to
-	 * manually map keywords and IDs.
-	 *
-	 * @param string $keyword
-	 *
-	 * @return int|null
-	 */
-	function searchAccounts( $keyword ) {
-		$map = [
-			8338871 => [
-				'schwab',
-				'charles schwab',
-				'schwab bank',
-				'schwab checking',
-				'checking',
-			],
-			8338909 => [
-				'skymiles',
-				'delta',
-				'gold skymiles',
-				'delta gold',
-			],
-			8338910 => [
-				'platinum',
-				'amex platinum',
-			],
-			8338911 => [
-				'starwood',
-				'spg',
-				's.p.g',
-				'starwood preferred guest',
-			],
-			8338997 => [
-				'alaska airlines',
-				'alaska',
-				'bank of america',
-			],
-		];
-
-		$keyword = strtolower( trim( $keyword ) );
-
-		foreach( $map as $id => $aliases ) {
-			if ( array_search( $keyword, $aliases ) !== false )
-				return $id;
-		}
-
-		return null;
 	}
 
 	/**
@@ -224,6 +171,85 @@ class AlexaBookkeeper {
 		$keyword = $request['request']['intent']['slots']['Account']['value'];
 
 		return $keyword;
+	}
+
+	/**
+	 * Build the search index for our accounts
+	 *
+	 * @return array
+	 */
+	function buildIndex()
+	{
+		// Loop through accounts
+		foreach( $this->accounts as $account ) {
+			// Start with a fresh corpus
+			$corpus = [];
+
+			// The keys we want to add to our corpus
+			$keys = [
+				'fiLoginDisplayName',
+				'userName',
+				'accountName',
+				'yodleeName',
+				'fiName',
+			];
+
+			// Add each value to our corpus for this account
+			foreach ( $keys as $key ) {
+				if ( isset( $account[ $key ] ) )
+					$corpus[] = $account[ $key ];
+			}
+
+			// Remove duplicate words, punctuation, and lowercase it all
+			$corpus = implode( ' ', $corpus );
+			$corpus = explode( ' ', $corpus );
+			$corpus = array_unique( $corpus );
+			$corpus = implode( ' ', $corpus );
+			$corpus = trim( preg_replace( "/[^0-9a-z]+/i", " ", $corpus ) );
+			$corpus = strtolower( $corpus );
+
+			// Add to the index
+			$index[ $account['id'] ] = $corpus;
+		}
+
+		// Return the full index
+		return $index;
+	}
+
+	/**
+	 * Get the closest matching account ID for the search term
+	 *
+	 * @param string $search
+	 * 
+	 * @return int
+	 */
+	function searchAccounts( $search )
+	{
+		$results = [];
+
+		// Lowercase the search term
+		$search = strtolower( $search );
+
+		// Build the search index
+		$index = buildIndex( $this->accounts );
+
+		// Get similarity ratings for each item in the index
+		foreach( $index as $id => $corpus ) {
+			$results[ $id ] = similar_text( $search, $corpus );
+		}
+
+		// Sort the results by highest to lowest match
+		arsort( $results );
+
+		$resultsSorted = [];
+
+		// Rebuild the sorted array of IDs
+		foreach ( $results as $id => $similarity ) {
+			$resultsSorted[] = $id;
+		}
+
+		// Return the first ID in the bunch
+		return $resultsSorted[0];
 	}
 
 	/**
