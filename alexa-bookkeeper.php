@@ -9,7 +9,7 @@ class AlexaBookkeeper {
 	 *
 	 * @var public
 	 */
-	public $relativePathToMintCreds = 'mint.json';
+	public $relativePathToMintCreds = '../../.mint.json';
 
 	/**
 	 * Handle requests here
@@ -135,7 +135,7 @@ class AlexaBookkeeper {
 
 		// Fetch all the accounts
 		// TODO cache this
-		$accounts = shell_exec( '~/pythonenv/bin/mintapi --accounts "' . $credentials['email'] . '" "' . $credentials['password'] . '"' );
+		$accounts = shell_exec( '~/pythonenv/bin/mintapi --accounts ' . $credentials['email'] . ' "' . $credentials['password'] . '"' );
 		$accounts = json_decode( $accounts, true );
 
 		return $accounts;
@@ -162,7 +162,7 @@ class AlexaBookkeeper {
 	 *
 	 * @return string
 	 */
-	public function getKeywordFromRequest( $request )
+	public function getKeywordFromRequest( $request = null )
 	{
 		if ( $request === null )
 			$request = $this->getRequest();
@@ -178,10 +178,10 @@ class AlexaBookkeeper {
 	 *
 	 * @return array
 	 */
-	function buildIndex()
+	public function buildIndex()
 	{
 		// Loop through accounts
-		foreach( $this->accounts as $account ) {
+		foreach ( $this->accounts as $account ) {
 			// Start with a fresh corpus
 			$corpus = [];
 
@@ -231,7 +231,7 @@ class AlexaBookkeeper {
 		$search = strtolower( $search );
 
 		// Build the search index
-		$index = buildIndex( $this->accounts );
+		$index = $this->buildIndex();
 
 		// Get similarity ratings for each item in the index
 		foreach( $index as $id => $corpus ) {
