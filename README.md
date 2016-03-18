@@ -23,7 +23,8 @@ You'll need:
 
 ## Caveats
 
-+ You'll need to store your Mint credentials on your server, as Mint doesn't offer a true API/OAuth
++ Be careful: Mint rate-limits logins, and the script doesn't do any caching (yet).
++ You'll need to store your Mint credentials on your server, as Mint doesn't offer a true API/OAuth.
 + The mintapi Python script could break at any time, breaking all of this. No promises.
 
 ## License
