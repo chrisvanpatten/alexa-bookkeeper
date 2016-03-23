@@ -1,0 +1,13 @@
+{
+  "intents": [
+    {
+      "intent": "GetBalance",
+      "slots": [
+        {
+          "name": "Account",
+          "type": "Accounts"
+        }
+      ]
+    }
+  ]
+}

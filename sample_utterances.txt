@@ -1,0 +1,8 @@
+GetBalance for my {Account} balance
+GetBalance what I owe on my {Account} account
+GetBalance how much I owe on my {Account} account
+GetBalance what I owe on my {Account} card
+GetBalance how much I owe on my {Account} card
+GetBalance how much I have in my {Account} account
+GetBalance how much money I have in my {Account} account
+GetBalance what my {Account} balance is
