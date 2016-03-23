@@ -1,0 +1,5 @@
+{
+	"pathToCache": "/path/to/cache/",
+	"pathToMintapiBinary": "/path/to/mintapi",
+	"pathToMintCreds": "/path/to/mint.json"
+}

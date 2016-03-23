@@ -12,21 +12,24 @@ You'll need:
 
 ## Setup
 
-0. Install [mintapi](https://github.com/mrooney/mintapi) on your server (and configure the path to it if necessary inside the `fetchAccounts()` method)
-0. Rename and move the example.mint.json file to a safe place **outside of your webroot**
-0. Add your Mint credentials to the file
-0. Set the relative path to your Mint credentials file in the alexa-bookkeeper.php file
-0. Create a new Alexa skill in the Amazon Developers portal, pointing to your alexa-bookkeeper.php file
+0. Install [mintapi](https://github.com/mrooney/mintapi) on your server
+0. Rename and move the example.mint.json file to a safe place **outside of your webroot**. Add your Mint credentials to the file
+0. Rename and edit the example.config.json file to a safe place. Add your paths
+0. Set the relative path to your Mint credentials file (mint.json) in alexa-bookkeeper.php and refresh.py, and your path to the `mintapi` binary in alexa-bookkeeper.php
+0. Create a new Alexa skill in the Amazon Developers portal, pointing to your `alexa-bookkeeper.php` file
+0. Configure a cron job on your server to run refresh.py once or twice daily (don't run it too frequently, or Mint will lock your account; see "Caveats and notes" below)
 0. ...
 0. Profit!
 
-## Caveats
+## Caveats and notes
 
 + You'll need to store your Mint credentials on your server, as Mint doesn't offer a true API/OAuth.
++ To 'hide' an account from the script, give it the title "ignore" in Mint.
++ Be careful while testing; Mint rate-limits logins and will force a password reset or lockout if you try to log in too frequently.
 + The mintapi Python script could break at any time, breaking all of this. No promises.
 
 ## License
 
 &copy; 2016 Chris Van Patten.
 
-Licensed under the terms of the [CC0](https://creativecommons.org/publicdomain/zero/1.0/) public domain license.
+Licensed under the terms of the [CC0 public domain license](https://creativecommons.org/publicdomain/zero/1.0/).

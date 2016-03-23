@@ -3,30 +3,70 @@
 class AlexaBookkeeper {
 
 	/**
-	 * The relative path to your Mint credentials. A leading
-	 * slash will be prepended to this string, and the whole
-	 * thing will be appended to a dirname( __FILE__ ) call.
+	 * The absolute path to your Mint credentials.
 	 *
 	 * @var public
 	 */
-	public $relativePathToMintCreds = '../../.mint.json';
+	public $pathToMintCreds;
 
 	/**
-	 * The relative path to your cache.
+	 * The absolute path to your cache.
 	 *
 	 * @var public
 	 */
-	public $relativePathToCache = '../../.cache/alexa-bookkeeper';
+	public $pathToCache;
+
+	/**
+	 * The path to the Mint API binary
+	 *
+	 * @var public
+	 */
+	public $pathToMintapiBinary;
 
 	/**
 	 * Handle requests here
 	 */
 	public function __construct()
 	{
-		if ( $_SERVER['REQUEST_METHOD'] === 'POST' )
+		// Only respone if a POST request
+		if ( $_SERVER['REQUEST_METHOD'] === 'POST' ) {
+			// Set up our initial config vars
+			$this->getConfig();
+
+			// Get our Mint credentials
+			$this->getMintCredentials();
+
+			// Handle the request
 			$this->handlePost();
-		else
-			exit;
+		}
+
+		exit;
+	}
+
+	/**
+	 * Get the config values for the session
+	 */
+	public function getConfig()
+	{
+		$config = file_get_contents( dirname( __FILE__ ) . '/../config.json' );
+		$config = json_decode( $config, true );
+
+		// Set our config vars
+		$this->pathToMintapiBinary = $config['pathToMintapiBinary'];
+		$this->pathToMintCreds     = $config['pathToMintCreds'];
+		$this->pathToCache         = $config['pathToCache'];
+	}
+
+	/**
+	 * Get the Mint credentials from our JSON file
+	 *
+	 * @return array;
+	 */
+	public function getMintCredentials()
+	{
+		$credentials = file_get_contents( $this->pathToMintCreds );
+
+		$this->credentials = json_decode( $credentials, true );
 	}
 
 	/**
@@ -122,36 +162,21 @@ class AlexaBookkeeper {
 	}
 
 	/**
-	 * Get the Mint credentials from our JSON file
-	 *
-	 * @return array;
-	 */
-	public function getMintCredentials()
-	{
-		$credentials = file_get_contents( dirname( __FILE__ ) . '/' . $this->relativePathToMintCreds );
-		$credentials = json_decode( $credentials, true );
-
-		return $credentials;
-	}
-
-	/**
 	 * Fetch the accounts from the Python mintapi utility
 	 *
 	 * @return array
 	 */
 	public function fetchAccounts()
 	{
-		$credentials = $this->getMintCredentials();
-
 		// Set the path to the accounts cache file
-		$file_accounts = dirname( __FILE__ ) . '/' . $this->relativePathToCache . '/accounts.json';
+		$file_accounts = $this->pathToCache . '/accounts-' . $this->credentials['email'] . '.json';
 
 		// If the cache is less than one hour old, reuse it
 		if ( file_exists( $file_accounts ) && filemtime( $file_accounts ) > ( time() - 60 * 60 ) ) {
 			$accounts = file_get_contents( $file_accounts );
 		} else {
 			// Otherwise, the cache is stale and should be updated
-			$accounts = shell_exec( '~/pythonenv/bin/mintapi --accounts ' . $credentials['email'] . ' "' . $credentials['password'] . '"' );
+			$accounts = shell_exec( $this->pathToMintapiBinary . ' --accounts ' . $this->credentials['email'] . ' "' . $this->credentials['password'] . '"' );
 			file_put_contents( $file_accounts, $accounts, LOCK_EX );
 		}
 
