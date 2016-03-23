@@ -203,6 +203,10 @@ class AlexaBookkeeper {
 	{
 		// Loop through accounts
 		foreach ( $this->accounts as $account ) {
+			// Skip "ignore" accounts
+			if ( $account['userName'] == 'ignore' )
+				continue;
+
 			// Start with a fresh corpus
 			$corpus = [];
 
