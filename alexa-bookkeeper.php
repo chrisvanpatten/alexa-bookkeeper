@@ -12,6 +12,13 @@ class AlexaBookkeeper {
 	public $relativePathToMintCreds = '../../.mint.json';
 
 	/**
+	 * The relative path to your cache.
+	 *
+	 * @var public
+	 */
+	public $relativePathToCache = '../../.cache/alexa-bookkeeper';
+
+	/**
 	 * Handle requests here
 	 */
 	public function __construct()
@@ -56,7 +63,8 @@ class AlexaBookkeeper {
 	 *
 	 * @return string
 	 */
-	private function speakableName( $account ) {
+	private function speakableName( $account )
+	{
 		return $account['userName'] ? $account['userName'] : $account['fiLoginDisplayName'] . ' ' . $account['yodleeName'];
 	}
 
@@ -69,7 +77,8 @@ class AlexaBookkeeper {
 	 *
 	 * @return string
 	 */
-	private function speakableSentence( $account ) {
+	private function speakableSentence( $account )
+	{
 		$name    = $this->speakableName( $account );
 		$balance = $this->speakableBalance( $account['currentBalance'] );
 
@@ -98,7 +107,8 @@ class AlexaBookkeeper {
 	 *
 	 * @return array|null
 	 */
-	function getAccount( $accountId, $accounts = [] ) {
+	function getAccount( $accountId, $accounts = [] )
+	{
 		if ( empty( $accounts ) )
 			$accounts = $this->accounts;
 
@@ -133,11 +143,22 @@ class AlexaBookkeeper {
 	{
 		$credentials = $this->getMintCredentials();
 
-		// Fetch all the accounts
-		// TODO cache this
-		$accounts = shell_exec( '~/pythonenv/bin/mintapi --accounts ' . $credentials['email'] . ' "' . $credentials['password'] . '"' );
+		// Set the path to the accounts cache file
+		$file_accounts = dirname( __FILE__ ) . '/' . $this->relativePathToCache . '/accounts.json';
+
+		// If the cache is less than one hour old, reuse it
+		if ( file_exists( $file_accounts ) && filemtime( $file_accounts ) > ( time() - 60 * 60 ) ) {
+			$accounts = file_get_contents( $file_accounts );
+		} else {
+			// Otherwise, the cache is stale and should be updated
+			$accounts = shell_exec( '~/pythonenv/bin/mintapi --accounts ' . $credentials['email'] . ' "' . $credentials['password'] . '"' );
+			file_put_contents( $file_accounts, $accounts, LOCK_EX );
+		}
+
+		// Decode the accounts
 		$accounts = json_decode( $accounts, true );
 
+		// Return the array
 		return $accounts;
 	}
 
