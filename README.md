@@ -13,11 +13,10 @@ You'll need:
 ## Setup
 
 0. Install [mintapi](https://github.com/mrooney/mintapi) on your server
-0. Rename and move the example.mint.json file to a safe place **outside of your webroot**. Add your Mint credentials to the file
-0. Rename and edit the example.config.json file to a safe place. Add your paths
-0. Set the relative path to your Mint credentials file (mint.json) in alexa-bookkeeper.php and refresh.py, and your path to the `mintapi` binary in alexa-bookkeeper.php
+0. Rename `example.mint.json` to `.mint.json` and move it to a safe place **outside of your webroot**. Add your Mint credentials to the file
+0. Rename `example.config.json` to `.config.json` and update the paths
+0. Set the relative path to your Mint credentials file (`.mint.json`) in `refresh.py`, and configure a cron job on your server to run it once or twice daily (don't run it too frequently, or Mint will lock your account; see "Caveats and notes" below)
 0. Create a new Alexa skill in the Amazon Developers portal, pointing to your `alexa-bookkeeper.php` file
-0. Configure a cron job on your server to run refresh.py once or twice daily (don't run it too frequently, or Mint will lock your account; see "Caveats and notes" below)
 0. ...
 0. Profit!
 
