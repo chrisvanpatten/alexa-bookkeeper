@@ -28,8 +28,9 @@ class AlexaBookkeeper {
 	 */
 	public function __construct()
 	{
-		// Only respone if a POST request
+		// Only respond if a POST request
 		if ( $_SERVER['REQUEST_METHOD'] === 'POST' ) {
+
 			// Set up our initial config vars
 			$this->getConfig();
 
@@ -48,7 +49,7 @@ class AlexaBookkeeper {
 	 */
 	public function getConfig()
 	{
-		$config = file_get_contents( dirname( __FILE__ ) . '/../config.json' );
+		$config = file_get_contents( dirname( __FILE__ ) . '/.config.json' );
 		$config = json_decode( $config, true );
 
 		// Set our config vars
@@ -169,7 +170,7 @@ class AlexaBookkeeper {
 	public function fetchAccounts()
 	{
 		// Set the path to the accounts cache file
-		$file_accounts = $this->pathToCache . '/accounts-' . $this->credentials['email'] . '.json';
+		$file_accounts = $this->pathToCache . '/accounts-' . md5( $this->credentials['email'] ) . '.json';
 
 		// If the cache is less than one hour old, reuse it
 		if ( file_exists( $file_accounts ) && filemtime( $file_accounts ) > ( time() - 60 * 60 ) ) {
