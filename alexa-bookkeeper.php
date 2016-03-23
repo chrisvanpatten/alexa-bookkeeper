@@ -12,6 +12,13 @@ class AlexaBookkeeper {
 	public $relativePathToMintCreds = '../../.mint.json';
 
 	/**
+	 * The relative path to your cache.
+	 *
+	 * @var public
+	 */
+	public $relativePathToCache = '../../.cache/alexa-bookkeeper';
+
+	/**
 	 * Handle requests here
 	 */
 	public function __construct()
@@ -56,7 +63,8 @@ class AlexaBookkeeper {
 	 *
 	 * @return string
 	 */
-	private function speakableName( $account ) {
+	private function speakableName( $account )
+	{
 		return $account['userName'] ? $account['userName'] : $account['fiLoginDisplayName'] . ' ' . $account['yodleeName'];
 	}
 
@@ -69,7 +77,8 @@ class AlexaBookkeeper {
 	 *
 	 * @return string
 	 */
-	private function speakableSentence( $account ) {
+	private function speakableSentence( $account )
+	{
 		$name    = $this->speakableName( $account );
 		$balance = $this->speakableBalance( $account['currentBalance'] );
 
@@ -91,59 +100,6 @@ class AlexaBookkeeper {
 	}
 
 	/**
-	 * Map a keyword from the Alexa request to our
-	 * account IDs.
-	 *
-	 * TODO: Make this work seamlessly without needing to
-	 * manually map keywords and IDs.
-	 *
-	 * @param string $keyword
-	 *
-	 * @return int|null
-	 */
-	function searchAccounts( $keyword ) {
-		$map = [
-			8338871 => [
-				'schwab',
-				'charles schwab',
-				'schwab bank',
-				'schwab checking',
-				'checking',
-			],
-			8338909 => [
-				'skymiles',
-				'delta',
-				'gold skymiles',
-				'delta gold',
-			],
-			8338910 => [
-				'platinum',
-				'amex platinum',
-			],
-			8338911 => [
-				'starwood',
-				'spg',
-				's.p.g',
-				'starwood preferred guest',
-			],
-			8338997 => [
-				'alaska airlines',
-				'alaska',
-				'bank of america',
-			],
-		];
-
-		$keyword = strtolower( trim( $keyword ) );
-
-		foreach( $map as $id => $aliases ) {
-			if ( array_search( $keyword, $aliases ) !== false )
-				return $id;
-		}
-
-		return null;
-	}
-
-	/**
 	 * Get the account for the requested ID
 	 *
 	 * @param int $accountId
@@ -151,7 +107,8 @@ class AlexaBookkeeper {
 	 *
 	 * @return array|null
 	 */
-	function getAccount( $accountId, $accounts = [] ) {
+	function getAccount( $accountId, $accounts = [] )
+	{
 		if ( empty( $accounts ) )
 			$accounts = $this->accounts;
 
@@ -186,11 +143,22 @@ class AlexaBookkeeper {
 	{
 		$credentials = $this->getMintCredentials();
 
-		// Fetch all the accounts
-		// TODO cache this
-		$accounts = shell_exec( '~/pythonenv/bin/mintapi --accounts "' . $credentials['email'] . '" "' . $credentials['password'] . '"' );
+		// Set the path to the accounts cache file
+		$file_accounts = dirname( __FILE__ ) . '/' . $this->relativePathToCache . '/accounts.json';
+
+		// If the cache is less than one hour old, reuse it
+		if ( file_exists( $file_accounts ) && filemtime( $file_accounts ) > ( time() - 60 * 60 ) ) {
+			$accounts = file_get_contents( $file_accounts );
+		} else {
+			// Otherwise, the cache is stale and should be updated
+			$accounts = shell_exec( '~/pythonenv/bin/mintapi --accounts ' . $credentials['email'] . ' "' . $credentials['password'] . '"' );
+			file_put_contents( $file_accounts, $accounts, LOCK_EX );
+		}
+
+		// Decode the accounts
 		$accounts = json_decode( $accounts, true );
 
+		// Return the array
 		return $accounts;
 	}
 
@@ -215,7 +183,7 @@ class AlexaBookkeeper {
 	 *
 	 * @return string
 	 */
-	public function getKeywordFromRequest( $request )
+	public function getKeywordFromRequest( $request = null )
 	{
 		if ( $request === null )
 			$request = $this->getRequest();
@@ -224,6 +192,89 @@ class AlexaBookkeeper {
 		$keyword = $request['request']['intent']['slots']['Account']['value'];
 
 		return $keyword;
+	}
+
+	/**
+	 * Build the search index for our accounts
+	 *
+	 * @return array
+	 */
+	public function buildIndex()
+	{
+		// Loop through accounts
+		foreach ( $this->accounts as $account ) {
+			// Skip "ignore" accounts
+			if ( $account['userName'] == 'ignore' )
+				continue;
+
+			// Start with a fresh corpus
+			$corpus = [];
+
+			// The keys we want to add to our corpus
+			$keys = [
+				'fiLoginDisplayName',
+				'userName',
+				'accountName',
+				'yodleeName',
+				'fiName',
+			];
+
+			// Add each value to our corpus for this account
+			foreach ( $keys as $key ) {
+				if ( isset( $account[ $key ] ) )
+					$corpus[] = $account[ $key ];
+			}
+
+			// Remove duplicate words, punctuation, and lowercase it all
+			$corpus = implode( ' ', $corpus );
+			$corpus = explode( ' ', $corpus );
+			$corpus = array_unique( $corpus );
+			$corpus = implode( ' ', $corpus );
+			$corpus = trim( preg_replace( "/[^0-9a-z]+/i", " ", $corpus ) );
+			$corpus = strtolower( $corpus );
+
+			// Add to the index
+			$index[ $account['id'] ] = $corpus;
+		}
+
+		// Return the full index
+		return $index;
+	}
+
+	/**
+	 * Get the closest matching account ID for the search term
+	 *
+	 * @param string $search
+	 * 
+	 * @return int
+	 */
+	function searchAccounts( $search )
+	{
+		$results = [];
+
+		// Lowercase the search term
+		$search = strtolower( $search );
+
+		// Build the search index
+		$index = $this->buildIndex();
+
+		// Get similarity ratings for each item in the index
+		foreach( $index as $id => $corpus ) {
+			$results[ $id ] = similar_text( $search, $corpus );
+		}
+
+		// Sort the results by highest to lowest match
+		arsort( $results );
+
+		$resultsSorted = [];
+
+		// Rebuild the sorted array of IDs
+		foreach ( $results as $id => $similarity ) {
+			$resultsSorted[] = $id;
+		}
+
+		// Return the first ID in the bunch
+		return $resultsSorted[0];
 	}
 
 	/**
