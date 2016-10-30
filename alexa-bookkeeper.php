@@ -28,17 +28,23 @@ class AlexaBookkeeper {
 	 */
 	public function __construct()
 	{
+		// Set up our initial config vars
+		$this->getConfig();
+
+		// Get our Mint credentials
+		$this->getMintCredentials();
+
 		// Only respond if a POST request
 		if ( $_SERVER['REQUEST_METHOD'] === 'POST' ) {
 
-			// Set up our initial config vars
-			$this->getConfig();
-
-			// Get our Mint credentials
-			$this->getMintCredentials();
-
 			// Handle the request
 			$this->handlePost();
+
+		} else if ( $_SERVER['REQUEST_METHOD'] === 'GET' ) {
+
+			// Handle the request
+			$this->handleGet();
+
 		}
 
 		exit;
@@ -177,7 +183,7 @@ class AlexaBookkeeper {
 			$accounts = file_get_contents( $file_accounts );
 		} else {
 			// Otherwise, the cache is stale and should be updated
-			$accounts = shell_exec( $this->pathToMintapiBinary . ' --accounts ' . $this->credentials['email'] . ' "' . $this->credentials['password'] . '"' );
+			$accounts = shell_exec( $this->pathToMintapiBinary . ' --accounts ' . $this->credentials['email'] . ' "' . $this->credentials['password'] . '" --session=' . $this->credentials['session'] );
 			file_put_contents( $file_accounts, $accounts, LOCK_EX );
 		}
 
@@ -271,7 +277,7 @@ class AlexaBookkeeper {
 	 * Get the closest matching account ID for the search term
 	 *
 	 * @param string $search
-	 * 
+	 *
 	 * @return int
 	 */
 	function searchAccounts( $search )
@@ -328,6 +334,17 @@ class AlexaBookkeeper {
 		// Actually send the request
 		header( 'Content-Type: application/json' );
 		echo json_encode( $response );
+		exit;
+	}
+
+	public function handleGet()
+	{
+		// Fetch accounts
+		$this->accounts = $this->fetchAccounts();
+
+		// Actually send the request
+		header( 'Content-Type: application/json' );
+		echo json_encode( $this->accounts );
 		exit;
 	}
 

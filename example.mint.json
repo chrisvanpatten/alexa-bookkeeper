@@ -1,4 +1,5 @@
 {
   "email": "email@domain.com",
-  "password": "test"
+  "password": "test",
+  "session": "test"
 }
